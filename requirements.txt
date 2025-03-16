@@ -1,0 +1,8 @@
+fastapi==0.104.1
+uvicorn==0.23.2
+python-multipart==0.0.6
+opencv-python-headless==4.8.1.78  # Headless version to reduce size
+scikit-image==0.21.0
+numpy==1.24.3
+mahotas==1.4.13
+python-dotenv==1.0.0
