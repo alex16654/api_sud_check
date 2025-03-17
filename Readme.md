@@ -13,6 +13,7 @@
 6. [Обработка ошибок](#6-обработка-ошибок)
 7. [Оптимизация производительности](#7-оптимизация-производительности)
 8. [Часто задаваемые вопросы](#8-часто-задаваемые-вопросы)
+9. [Установка](#9-Установка-и-развертывание-API)
 
 ## 1. Обзор
 
@@ -978,6 +979,230 @@ python image_quality_client.py --url http://<server-address>:8000 --dir /path/to
 ### 8.6. Как интегрировать API в существующую систему?
 
 API предоставляет стандартные REST-эндпоинты, которые можно легко интегрировать в любую систему, поддерживающую HTTP-запросы. Примеры интеграции на разных языках программирования приведены в разделе 5.
+
+## 9. Установка и развертывание API
+
+### 9.1. Клонирование репозитория с GitHub
+
+Для начала необходимо клонировать репозиторий с GitHub:
+
+```shellscript
+# Клонирование репозитория
+git clone https://github.com/alex16654/api_sud_check.git
+
+# Переход в директорию проекта
+cd api_sud_check
+```
+
+### 9.2. Установка зависимостей
+
+API требует Python 3.8 или выше. Установите необходимые зависимости:
+
+```shellscript
+# Создание виртуального окружения (рекомендуется)
+python -m venv venv
+source venv/bin/activate  # для Linux/Mac
+# или
+venv\Scripts\activate  # для Windows
+
+# Установка зависимостей
+pip install -r requirements.txt
+```
+
+### 9.3. Настройка конфигурации
+
+Создайте файл `.env` в корневой директории проекта:
+
+```shellscript
+# Создание файла .env
+touch .env  # для Linux/Mac
+# или
+type nul > .env  # для Windows
+```
+
+Отредактируйте файл `.env` и добавьте следующие параметры:
+
+```plaintext
+# Порт для запуска API
+PORT=8000
+
+# Максимальное количество рабочих процессов
+MAX_WORKERS=4
+
+# Максимальное количество одновременных запросов
+MAX_CONCURRENT_REQUESTS=6
+
+# Директория для временных файлов
+TEMP_DIR=/tmp/image_quality_api
+
+# Максимальный размер загружаемого файла (в байтах)
+MAX_CONTENT_LENGTH=20971520  # 20 МБ
+```
+
+### 9.4. Запуск API в режиме разработки
+
+Для локального тестирования запустите API в режиме разработки:
+
+```shellscript
+python app.py
+```
+
+API будет доступен по адресу `http://localhost:8000`.
+
+### 9.5. Развертывание на сервере
+
+#### 9.5.1. Использование Docker
+
+Для удобства развертывания можно использовать Docker:
+
+```shellscript
+# Сборка Docker-образа
+docker build -t image-quality-api .
+
+# Запуск контейнера
+docker run -d -p 8000:8000 --name image-quality-api image-quality-api
+```
+
+#### 9.5.2. Использование systemd (для Linux)
+
+Создайте файл службы systemd:
+
+```shellscript
+sudo nano /etc/systemd/system/image-quality-api.service
+```
+
+Добавьте следующее содержимое:
+
+```plaintext
+[Unit]
+Description=Image Quality API Service
+After=network.target
+
+[Service]
+User=<your-username>
+WorkingDirectory=/path/to/api_sud_check
+ExecStart=/path/to/api_sud_check/venv/bin/python app.py
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=image-quality-api
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Активируйте и запустите службу:
+
+```shellscript
+sudo systemctl daemon-reload
+sudo systemctl enable image-quality-api
+sudo systemctl start image-quality-api
+```
+
+#### 9.5.3. Использование Gunicorn и Nginx (рекомендуется для продакшн)
+
+Установите Gunicorn:
+
+```shellscript
+pip install gunicorn
+```
+
+Создайте файл конфигурации Gunicorn:
+
+```shellscript
+nano gunicorn_config.py
+```
+
+Добавьте следующее содержимое:
+
+```python
+bind = "127.0.0.1:8000"
+workers = 4
+worker_class = "uvicorn.workers.UvicornWorker"
+timeout = 120
+```
+
+Запустите API с помощью Gunicorn:
+
+```shellscript
+gunicorn -c gunicorn_config.py app:app
+```
+
+Настройте Nginx для проксирования запросов:
+
+```shellscript
+sudo nano /etc/nginx/sites-available/image-quality-api
+```
+
+Добавьте следующее содержимое:
+
+```plaintext
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+        client_max_body_size 20M;
+    }
+}
+```
+
+Активируйте конфигурацию Nginx:
+
+```shellscript
+sudo ln -s /etc/nginx/sites-available/image-quality-api /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### 9.6. Проверка работоспособности
+
+После развертывания проверьте работоспособность API:
+
+```shellscript
+curl http://<server-address>:8000/health
+```
+
+Ожидаемый ответ:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": 1710615123.456789,
+  "active_requests": 0,
+  "queue_size": 0,
+  "max_workers": 4,
+  "max_concurrent_requests": 6
+}
+```
+
+### 9.7. Обновление API
+
+Для обновления API до последней версии:
+
+```shellscript
+# Переход в директорию проекта
+cd /path/to/api_sud_check
+
+# Получение последних изменений
+git pull
+
+# Обновление зависимостей
+pip install -r requirements.txt
+
+# Перезапуск службы (если используется systemd)
+sudo systemctl restart image-quality-api
+
+# Или перезапуск Docker-контейнера (если используется Docker)
+docker restart image-quality-api
+```
 
 ---
 
