@@ -91,7 +91,7 @@ POST /score-from-file
 ```bash
 curl -X POST http://<server-address>:8000/score-from-file \
   -F "file=@/path/to/your/image.jpg" \
-  -F "downscale=0.5"
+  -F "downscale=1.0"
 ```
 
 **Ответ:**
@@ -117,7 +117,7 @@ POST /score-from-path
 ```bash
 curl -X POST http://<server-address>:8000/score-from-path \
   -d "image_path=/data/images/sample.jpg" \
-  -d "downscale=0.5"
+  -d "downscale=1.0"
 ```
 
 **Ответ:**
@@ -174,11 +174,11 @@ health = client.health_check()
 print(f"API Status: {health['status']}")
 
 # Оценка качества по пути к файлу
-result = client.score_from_path("/path/to/image.jpg", downscale=0.5)
+result = client.score_from_path("/path/to/image.jpg", downscale=1.0)
 print(f"Score for {result['filename']}: {result['score']}")
 
 # Оценка качества по загруженному файлу
-result = client.score_from_file("/path/to/image.jpg", downscale=0.5)
+result = client.score_from_file("/path/to/image.jpg", downscale=1.0)
 print(f"Score for {result['filename']}: {result['score']}")
 
 # Обработка всех изображений в директории
@@ -186,7 +186,7 @@ results = client.process_directory(
     "/path/to/images",
     use_upload=True,  # True для загрузки файлов, False для использования путей
     max_workers=5,
-    downscale=0.5
+    downscale=1.0
 )
 
 # Вывод статистики
@@ -895,14 +895,14 @@ def request_with_retry(url, method="GET", data=None, files=None, max_retries=3, 
 from concurrent.futures import ThreadPoolExecutor
 import requests
 
-def score_image(image_path, api_url, downscale=0.5):
+def score_image(image_path, api_url, downscale=1.0):
     with open(image_path, 'rb') as f:
         files = {'file': (os.path.basename(image_path), f, 'image/jpeg')}
         data = {'downscale': str(downscale)}
         response = requests.post(f"{api_url}/score-from-file", files=files, data=data)
         return response.json() if response.status_code == 200 else None
 
-def process_images_in_parallel(image_paths, api_url, max_workers=5, downscale=0.5):
+def process_images_in_parallel(image_paths, api_url, max_workers=5, downscale=1.0):
     results = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(score_image, path, api_url, downscale): path for path in image_paths}
